@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"unicode/utf16"
+
+	"github.com/atotto/clipboard"
 )
 
 type Shell struct {
@@ -40,7 +43,7 @@ func (s Shell) Run(command string) error {
 	args := []string{"-c", command}
 	switch s.Name {
 	case "pwsh":
-		args = []string{"-NoLogo", "-NoProfile", "-Command", command}
+		args = []string{"-NoLogo", "-NoProfile", "-EncodedCommand", base64.StdEncoding.EncodeToString(utf16LE(command))}
 	case "cmd":
 		args = []string{"/d", "/v:off", "/s", "/c", command}
 	}
@@ -55,11 +58,7 @@ func Copy(text string) error {
 	input := []byte(text)
 	switch runtime.GOOS {
 	case "windows":
-		tools = [][]string{{"clip.exe"}}
-		input = []byte{0xff, 0xfe}
-		for _, unit := range utf16.Encode([]rune(text)) {
-			input = append(input, byte(unit), byte(unit>>8))
-		}
+		return clipboard.WriteAll(text)
 	case "darwin":
 		tools = [][]string{{"pbcopy"}}
 	default:
@@ -77,4 +76,12 @@ func Copy(text string) error {
 		names = append(names, tool[0])
 	}
 	return fmt.Errorf("clipboard unavailable (%s)", strings.Join(names, ", "))
+}
+
+func utf16LE(text string) []byte {
+	var data []byte
+	for _, unit := range utf16.Encode([]rune(text)) {
+		data = append(data, byte(unit), byte(unit>>8))
+	}
+	return data
 }

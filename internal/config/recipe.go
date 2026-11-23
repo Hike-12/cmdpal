@@ -21,15 +21,16 @@ type Flag struct {
 }
 
 type Recipe struct {
-	Name     string            `yaml:"name"`
-	Command  string            `yaml:"command"`
-	Windows  string            `yaml:"windows,omitempty"`
-	Summary  string            `yaml:"summary,omitempty"`
-	Safety   string            `yaml:"safety,omitempty"`
-	Flags    []Flag            `yaml:"flags,omitempty"`
-	Defaults map[string]string `yaml:"defaults,omitempty"`
-	Category string            `yaml:"-"`
-	Tags     []string          `yaml:"-"`
+	Name         string            `yaml:"name"`
+	Command      string            `yaml:"command"`
+	Windows      string            `yaml:"windows,omitempty"`
+	Summary      string            `yaml:"summary,omitempty"`
+	Safety       string            `yaml:"safety,omitempty"`
+	Flags        []Flag            `yaml:"flags,omitempty"`
+	WindowsFlags []Flag            `yaml:"windows_flags,omitempty"`
+	Defaults     map[string]string `yaml:"defaults,omitempty"`
+	Category     string            `yaml:"-"`
+	Tags         []string          `yaml:"-"`
 }
 
 var slot = regexp.MustCompile(`\{\{([a-zA-Z][a-zA-Z0-9_-]*)\}\}`)
@@ -37,10 +38,17 @@ var bare = regexp.MustCompile(`^[a-zA-Z0-9_./:@+,=-]+$`)
 var cmdArg = regexp.MustCompile(`^[a-zA-Z0-9_./:@+,= \\-]+$`)
 
 func (r Recipe) Template(shell string) string {
-	if (shell == "pwsh" || shell == "cmd") && r.Windows != "" {
+	if shell == "pwsh" && r.Windows != "" {
 		return r.Windows
 	}
 	return r.Command
+}
+
+func (r Recipe) FlagsFor(shell string) []Flag {
+	if shell == "pwsh" && r.WindowsFlags != nil {
+		return r.WindowsFlags
+	}
+	return r.Flags
 }
 
 func (r Recipe) Params(shell string) []string {
@@ -64,7 +72,13 @@ func (r Recipe) Render(shell string, values map[string]string) (string, error) {
 
 func (r Recipe) render(shell string, values map[string]string) (string, error) {
 	var first error
-	command := slot.ReplaceAllStringFunc(r.Template(shell), func(token string) string {
+	template := r.Template(shell)
+	argumentShell := shell
+	wrapPOSIX := shell == "fish" && r.Category != "CUSTOM" && strings.Contains(template, "; do ")
+	if wrapPOSIX {
+		argumentShell = "sh"
+	}
+	command := slot.ReplaceAllStringFunc(template, func(token string) string {
 		name := token[2 : len(token)-2]
 		value := values[name]
 		var err error
@@ -83,11 +97,13 @@ func (r Recipe) render(shell string, values map[string]string) (string, error) {
 		default:
 			if value == "" {
 				err = fmt.Errorf("enter %s", name)
+			} else if r.Category != "CUSTOM" && (name == "branch" || name == "container" || name == "file" || name == "output") && strings.HasPrefix(value, "-") {
+				err = fmt.Errorf("%s cannot start with a dash", name)
 			}
 		}
 		var word string
 		if err == nil {
-			word, err = quote(shell, value)
+			word, err = quote(argumentShell, value)
 		}
 		if err != nil {
 			if first == nil {
@@ -97,6 +113,13 @@ func (r Recipe) render(shell string, values map[string]string) (string, error) {
 		}
 		return word
 	})
+	if wrapPOSIX {
+		script, err := quote(shell, command)
+		if err != nil {
+			return command, err
+		}
+		command = "sh -c " + script
+	}
 	return command, first
 }
 
@@ -113,7 +136,7 @@ func quote(shell, value string) (string, error) {
 		}
 		return value, nil
 	}
-	if bare.MatchString(value) {
+	if bare.MatchString(value) && (shell != "pwsh" || !strings.HasPrefix(value, "@")) {
 		return value, nil
 	}
 	if shell == "pwsh" {

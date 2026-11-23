@@ -83,12 +83,19 @@ func (m *Model) details(width int) []detail {
 	for _, part := range wrap(r.Preview(m.shell.Name, m.values()), width) {
 		line(strong.Render(part))
 	}
-	if len(r.Flags) > 0 {
+	if flags := r.FlagsFor(m.shell.Name); len(flags) > 0 {
 		line("")
 		line(subtle.Render("FLAGS"))
-		for _, flag := range r.Flags {
-			for _, part := range wrap(flag.Name+"  "+flag.Description, width) {
-				line(subtle.Render(part))
+		for _, flag := range flags {
+			keyWidth := min(22, max(10, width/2))
+			key := ansi.Truncate(clean(flag.Name), keyWidth, "…")
+			padding := strings.Repeat(" ", keyWidth-lipgloss.Width(key)+2)
+			for i, part := range wrap(flag.Description, width-keyWidth-2) {
+				if i == 0 {
+					line(strong.Render(key) + padding + subtle.Render(part))
+				} else {
+					line(strings.Repeat(" ", keyWidth+2) + subtle.Render(part))
+				}
 			}
 		}
 	}

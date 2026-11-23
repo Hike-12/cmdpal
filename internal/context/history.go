@@ -18,6 +18,7 @@ func HistoryFiles(home, appdata string) map[string]string {
 	paths := map[string]string{
 		"bash": filepath.Join(home, ".bash_history"),
 		"zsh":  filepath.Join(home, ".zsh_history"),
+		"sh":   filepath.Join(home, ".sh_history"),
 	}
 	if appdata != "" {
 		paths["pwsh"] = filepath.Join(appdata, "Microsoft", "Windows", "PowerShell", "PSReadLine", "ConsoleHost_history.txt")
@@ -55,7 +56,7 @@ func ParseHistory(input io.Reader, shell string) ([]string, error) {
 
 func RecentHistory(paths map[string]string) []string {
 	var recent []string
-	for _, shell := range []string{"zsh", "bash", "pwsh", "fish", "cmd", "sh"} {
+	for _, shell := range []string{"zsh", "bash", "pwsh", "fish", "cmd", "sh", "cmdpal"} {
 		file, err := os.Open(paths[shell])
 		if err != nil {
 			continue

@@ -47,6 +47,7 @@ func run() error {
 	}
 	shell := terminal.NativeShell()
 	history := projectcontext.HistoryFiles(home, os.Getenv("APPDATA"))
+	history["cmdpal"] = filepath.Join(home, ".cmdpal", "history")
 	if path := os.Getenv("HISTFILE"); path != "" {
 		history[shell.Name] = path
 	}
@@ -60,7 +61,7 @@ func run() error {
 	}
 	historyPath := history[shell.Name]
 	if historyPath == "" {
-		historyPath = filepath.Join(home, ".cmdpal", "history")
+		historyPath = history["cmdpal"]
 	}
 	if err := projectcontext.AppendHistory(historyPath, shell.Name, state.Command); err != nil {
 		fmt.Fprintln(os.Stderr, "cmdpal: could not record command:", err)

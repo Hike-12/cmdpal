@@ -98,7 +98,7 @@ func (m *Model) refresh(keepSelection bool) {
 	addGroup := func(label string, indices []int) {
 		start := len(m.rows)
 		for _, index := range indices {
-			if len(config.Filter(m.recipes[index:index+1], query)) != 0 {
+			if config.MatchScore(m.recipes[index], query) != 0 {
 				m.rows = append(m.rows, row{index: index})
 			}
 		}
@@ -129,6 +129,17 @@ func (m *Model) refresh(keepSelection bool) {
 		}
 		if keepSelection && item.index == previous && previous >= 0 {
 			break
+		}
+	}
+	if !keepSelection && query != "" {
+		best := 0
+		for i, item := range m.rows {
+			if item.index >= 0 {
+				score := config.MatchScore(m.recipes[item.index], query)
+				if score > best {
+					best, m.selected = score, i
+				}
+			}
 		}
 	}
 	if r, ok := m.recipe(); !ok || m.rows[m.selected].index != previous || (len(m.inputs) == 0 && len(r.Params(m.shell.Name)) > 0) {
