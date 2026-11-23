@@ -42,7 +42,8 @@ type frame struct {
 }
 
 func (f *frame) line(text string, width int) {
-	f.lines = append(f.lines, fit("  "+text, width+4, canvas))
+	text = ansi.Truncate(text, width, "…")
+	f.lines = append(f.lines, fit("", 2, canvas)+text+fit("", width+2-lipgloss.Width(text), canvas))
 }
 
 type detail struct {
@@ -147,7 +148,7 @@ func (m *Model) frame() frame {
 	}
 	d := m.dimensions()
 	f.line("", d.width)
-	path := clean(m.project.Dir)
+	path := clean(m.displayDir)
 	f.line(title.Render("cmdpal")+"   "+subtle.Render(path), d.width)
 	var badges []string
 	for _, badge := range m.project.Badges {
@@ -229,7 +230,7 @@ func (m *Model) frame() frame {
 		}
 	} else {
 		for i := range left {
-			f.line(left[i]+" "+right[i], d.width)
+			f.line(left[i]+fit("", 1, canvas)+right[i], d.width)
 		}
 	}
 	f.line("", d.width)

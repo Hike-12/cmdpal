@@ -50,7 +50,12 @@ func clean(text string) string {
 func fit(text string, width int, bg lipgloss.Color) string {
 	text = ansi.Truncate(text, width, "…")
 	padding := strings.Repeat(" ", max(0, width-lipgloss.Width(text)))
-	return lipgloss.NewStyle().Background(bg).Render(text + padding)
+	style := lipgloss.NewStyle().Background(bg)
+	if prefix, reset, ok := strings.Cut(style.Render(" "), " "); ok && prefix != "" {
+		text = strings.NewReplacer("\x1b[0m", "\x1b[0m"+prefix, "\x1b[m", "\x1b[m"+prefix).Replace(text)
+		return prefix + text + padding + reset
+	}
+	return text + padding
 }
 
 func panelLine(line string, width int) string {

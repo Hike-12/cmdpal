@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -29,6 +30,7 @@ type row struct {
 
 type Model struct {
 	project                      projectcontext.Project
+	displayDir                   string
 	store                        config.Store
 	shell                        terminal.Shell
 	history                      []string
@@ -52,10 +54,17 @@ type Model struct {
 func New(project projectcontext.Project, store config.Store, shell terminal.Shell, custom []config.Recipe, history []string, warning string) *Model {
 	m := &Model{
 		project: project, store: store, shell: shell, history: history,
-		recipes: append(config.Catalog(), custom...), selected: -1,
+		displayDir: project.Dir,
+		recipes:    append(config.Catalog(), custom...), selected: -1,
 		width: 100, height: 30, focus: listFocus, status: warning,
 		search:      input("Filter commands", ""),
 		suggestions: map[string][]string{"branch": project.Branches(), "file": project.Files()},
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		if relative, err := filepath.Rel(home, project.Dir); err == nil && relative != ".." &&
+			!strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+			m.displayDir = filepath.Join("~", relative)
+		}
 	}
 	m.refresh(true)
 	return m
