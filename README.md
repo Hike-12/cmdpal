@@ -6,7 +6,7 @@ A command palette for your terminal. Find a command, inspect its flags, and fill
 
 ## Install
 
-Download the archive for your OS and CPU from [GitHub Releases](https://github.com/Hike-12/Codex-5-TUI/releases), then put `cmdpal` or `cmdpal.exe` on your `PATH`. Releases include SHA-256 checksums.
+Download the archive for your OS and CPU from [GitHub Releases](https://github.com/Hike-12/cmdpal/releases), then put `cmdpal` or `cmdpal.exe` on your `PATH`. Releases include SHA-256 checksums.
 
 To build from this checkout with Go 1.24 or newer:
 
@@ -16,7 +16,7 @@ go install .
 
 Add the directory printed by `go env GOBIN` to your `PATH`. When it is empty, use the `bin` directory under `go env GOPATH`.
 
-The module is `github.com/Hike-12/cmdpal`. Once the module is published at that path, install it with:
+Install directly from GitHub with Go:
 
 ```sh
 go install github.com/Hike-12/cmdpal@latest
