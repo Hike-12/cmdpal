@@ -1,4 +1,4 @@
-# cmdpal
+# codex-5 TUI · cmdpal
 
 A command palette for your terminal. Find a command, inspect its flags, and fill in the arguments before you run it.
 
