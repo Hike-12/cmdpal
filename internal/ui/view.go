@@ -167,7 +167,11 @@ func (m *Model) frame() frame {
 		mark = title.Render(" / ")
 	}
 	f.hits = append(f.hits, hit{2, len(f.lines), searchWidth, "search", 0})
-	f.line(fit(mark+search.View(), searchWidth, surface)+"  "+subtle.Render(ansi.Truncate(badgeLine, badgeWidth, "…")), d.width)
+	searchLine := fit(mark+search.View(), searchWidth, surface)
+	if badgeWidth > 0 {
+		searchLine += fit("", 2, canvas) + subtle.Background(canvas).Render(ansi.Truncate(badgeLine, badgeWidth, "…"))
+	}
+	f.line(searchLine, d.width)
 	f.line("", d.width)
 	if m.confirm || m.form != nil {
 		m.dialog(&f, d.width)
