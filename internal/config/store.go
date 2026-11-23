@@ -58,6 +58,13 @@ func (s Store) Load() ([]Recipe, error) {
 	if err := decoder.Decode(&document); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("read %s: %w", s.Path, err)
 	}
+	var extra yaml.Node
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", s.Path, err)
+		}
+		return nil, errors.New("commands.yaml must contain one YAML document")
+	}
 	for index, recipe := range document.Commands {
 		if err := normalize(&recipe); err != nil {
 			return nil, fmt.Errorf("command %d: %w", index+1, err)
@@ -90,6 +97,21 @@ func normalize(r *Recipe) error {
 
 func (s Store) Add(recipe Recipe) error {
 	if err := normalize(&recipe); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(s.Path), 0700); err != nil {
+		return err
+	}
+	lockPath := s.Path + ".lock"
+	lock, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if errors.Is(err, os.ErrExist) {
+		return errors.New("another save is in progress")
+	}
+	if err != nil {
+		return err
+	}
+	defer os.Remove(lockPath)
+	if err := lock.Close(); err != nil {
 		return err
 	}
 	recipes, err := s.Load()

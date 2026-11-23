@@ -73,18 +73,22 @@ func Catalog() []Recipe {
 func Pinned(recipes []Recipe, badges, history []string) []int {
 	type match struct{ index, score int }
 	var matches []match
+	projectPins := make(map[string]int)
 	for index, recipe := range recipes {
 		score := 0
-		if slices.ContainsFunc(badges, func(badge string) bool {
+		for _, badge := range badges {
 			tag, _, _ := strings.Cut(badge, ":")
-			return slices.Contains(recipe.Tags, tag)
-		}) {
-			score = 1
+			if slices.Contains(recipe.Tags, tag) && projectPins[tag] < 2 {
+				projectPins[tag]++
+				score = 1
+				break
+			}
 		}
 		prefix, _, _ := strings.Cut(recipe.Command, "{{")
 		prefix = strings.TrimSpace(prefix)
 		for _, command := range history {
-			if command == prefix || strings.HasPrefix(command, prefix+" ") {
+			if command == prefix || strings.HasPrefix(command, prefix+" ") ||
+				(len(strings.Fields(command)) >= 2 && strings.HasPrefix(prefix, command+" ")) {
 				score += 2
 			}
 		}

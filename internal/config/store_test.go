@@ -46,3 +46,18 @@ func TestFuzzyFilter(t *testing.T) {
 		t.Fatalf("Filter = %v", found)
 	}
 }
+
+func TestContextAndHistoryPins(t *testing.T) {
+	catalog := Catalog()
+	indices := Pinned(catalog, []string{"git:main", "docker", "go"}, []string{"git status", "git status"})
+	if len(indices) < 5 || catalog[indices[0]].Name != "Working tree status" {
+		t.Fatalf("history did not move Git status to the top: %v", indices)
+	}
+	categories := map[string]bool{}
+	for _, index := range indices {
+		categories[catalog[index].Category] = true
+	}
+	if !categories[Docker] || !categories[System] {
+		t.Fatalf("a project marker was crowded out: %v", categories)
+	}
+}

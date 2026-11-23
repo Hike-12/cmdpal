@@ -49,7 +49,8 @@ func clean(text string) string {
 
 func fit(text string, width int, bg lipgloss.Color) string {
 	text = ansi.Truncate(text, width, "…")
-	return text + lipgloss.NewStyle().Background(bg).Render(strings.Repeat(" ", max(0, width-lipgloss.Width(text))))
+	padding := strings.Repeat(" ", max(0, width-lipgloss.Width(text)))
+	return lipgloss.NewStyle().Background(bg).Render(text + padding)
 }
 
 func panelLine(line string, width int) string {
@@ -64,6 +65,6 @@ func panelEdge(width int, caption string, top bool) string {
 	if caption != "" {
 		caption = " " + caption + " "
 	}
-	return outline.Render("╭─") + subtle.Render(caption) +
+	return outline.Render("╭─") + subtle.Background(canvas).Render(caption) +
 		outline.Render(strings.Repeat("─", max(0, width-3-lipgloss.Width(caption)))+"╮")
 }
