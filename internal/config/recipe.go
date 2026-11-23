@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -69,8 +70,15 @@ func (r Recipe) render(shell string, values map[string]string) (string, error) {
 		var err error
 		switch name {
 		case "port", "pid", "count", "crf":
-			if !regexpNumber.MatchString(value) {
+			number, parseErr := strconv.ParseUint(value, 10, 31)
+			if parseErr != nil {
 				err = fmt.Errorf("%s must be a whole number", name)
+			} else if name == "port" && (number == 0 || number > 65535) {
+				err = fmt.Errorf("port must be between 1 and 65535")
+			} else if (name == "pid" || name == "count") && number == 0 {
+				err = fmt.Errorf("%s must be greater than zero", name)
+			} else if name == "crf" && number > 51 {
+				err = fmt.Errorf("crf must be between 0 and 51")
 			}
 		default:
 			if value == "" {
@@ -91,8 +99,6 @@ func (r Recipe) render(shell string, values map[string]string) (string, error) {
 	})
 	return command, first
 }
-
-var regexpNumber = regexp.MustCompile(`^[0-9]+$`)
 
 func quote(shell, value string) (string, error) {
 	if strings.ContainsFunc(value, unicode.IsControl) {
@@ -120,17 +126,37 @@ func quote(shell, value string) (string, error) {
 }
 
 func Filter(recipes []Recipe, query string) []Recipe {
-	tokens := strings.Fields(strings.ToLower(query))
 	var found []Recipe
 	for _, recipe := range recipes {
-		fields := strings.ToLower(recipe.Name + " " + recipe.Category + " " + recipe.Command)
-		if !slices.ContainsFunc(tokens, func(token string) bool {
-			return !strings.Contains(fields, token) && !subsequence(strings.ToLower(recipe.Name), token)
-		}) {
+		if MatchScore(recipe, query) > 0 {
 			found = append(found, recipe)
 		}
 	}
+	slices.SortStableFunc(found, func(a, b Recipe) int { return MatchScore(b, query) - MatchScore(a, query) })
 	return found
+}
+
+func MatchScore(recipe Recipe, query string) int {
+	query = strings.ToLower(strings.TrimSpace(query))
+	name := strings.ToLower(recipe.Name)
+	fields := strings.ToLower(recipe.Category + " " + recipe.Command + " " + recipe.Windows)
+	score := 1
+	if query != "" && strings.Contains(name, query) {
+		score += 10
+	}
+	for _, token := range strings.Fields(query) {
+		switch {
+		case strings.Contains(name, token):
+			score += 3
+		case strings.Contains(fields, token):
+			score += 2
+		case subsequence(name, token):
+			score++
+		default:
+			return 0
+		}
+	}
+	return score
 }
 
 func subsequence(text, token string) bool {
